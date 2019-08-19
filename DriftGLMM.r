@@ -3,6 +3,7 @@
 library(glmmTMB)
 library(bbmle)
 # 6. Fit Poisson GLMMs
+ShannonSubset<-ShannonRichness
 head(ShannonSubset)
 # With count data, a good place to start can be the Poisson distribution. It's a very
 # standard distribution for count data that can take integers from 0 to + infinity.
@@ -23,10 +24,9 @@ head(ShannonSubset)
 
 #Centering Flow
 hist(ShannonSubset$percillum)
-ShannonRichness$Q = ShannonRichness$Q - mean(ShannonRichness$Q)
+ShannonSubset$QCentered = ShannonSubset$Q - mean(ShannonSubset$Q)
 head(ShannonSubset)
 
-ShannonSubset<-ShannonRichness
 ShannonSubset$MoonPhase = factor(ShannonSubset$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
 
 ShannonSubset<-subset(ShannonSubset, percillum!= "NA")
@@ -43,10 +43,10 @@ ShannonSubset#ShannonSubset<-subset(ShannonSubset, Ninverts100 < 4000)
 length(ShannonSubset$SampleID)
 p0 = glmer(Ninverts100~1+(1|Year)+(1|DPFS),data=ShannonSubset,family = poisson)
 
-p1 = glmer(Ninverts100~percillum+DPFS+(1|Year),data=ShannonSubset,family = poisson)
+p1 = glmer(Ninverts100~percillum+(1|Year),data=ShannonSubset,family = poisson)
 p2 = glmer(Ninverts100~percillum+Q+(1|Year)+(1|DPFS),data=ShannonSubset,family = poisson)
-
-
+summary(p2)
+plot(ShannonSubset$percillum~ShannonSubset$Ninverts100)
 # The first thing to note (if you ran the same models I did) is the warning:
 # "boundary (singular) fit: see ?isSingular"
 # That warning is telling us that one of the parameters hsa been estimated to be on the

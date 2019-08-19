@@ -21,14 +21,13 @@ library(lme4)
 library(tiff)
 
 #DRIFT FILES all taxa
-otufull=read.table("C:\\Users\\Joe Receveur\\Documents\\MSU data\\Sturgeon\\SturgeonDrift\\DataAll\\SturgeonDriftOTUTable2011-2018InvertZerosRemoved.txt",header=TRUE)
-#head(otufull)
-metadata=read.csv("C:\\Users\\Joe Receveur\\Documents\\MSU data\\Sturgeon\\SturgeonDrift\\DataAll\\DriftMetadata2011-2018InvertZerosRemoved.csv",header=TRUE)
-#metadata
-head(metadata)
-taxmatrixfull=as.matrix(read.table("C:\\Users\\Joe Receveur\\Documents\\MSU data\\Sturgeon\\SturgeonDrift\\DataAll\\SturgeonDriftTax2011-2018InvertZerosRemoved.txt"))
-#head(taxmatrixfull)
-
+otufull=read.table("DataClean\\SturgeonDriftInvertAbundanceMatrix8.15.19.txt",header=TRUE)
+head(otufull)
+metadata=read.csv("DataClean\\SturgeonDriftMetadata8.15.19.csv",header=TRUE)
+metadata<-subset(metadata,Ninverts!=0) #Remove sample dates where no inverts were collected
+taxmatrixfull=as.matrix(read.table("DataClean\\SturgeonDriftInvertTaxNames8.15.19.txt"))
+head(taxmatrixfull)
+levels(metadata$MoonPhase)
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#000000","#CC79A7")
 theme_set(theme_bw(base_size = 12)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
@@ -42,28 +41,27 @@ sampdat=sample_data(metadata)
 sample_names(sampdat)=sampdat$SampleID
 #head(sampdat)
 taxa_names(TAX)=row.names(OTU)
-physeq=phyloseq(OTU,TAX,sampdat)#joins together OTU,TAX, and metadata into a 4D  object
+physeq=phyloseq(OTU,TAX,sampdat)#joins together OTU,TAX, and metadata 
 physeq
 levels(sample_data(physeq)$MoonPhase)
 sample_data(physeq)$MoonPhase = factor(sample_data(physeq)$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
 #levels(sample_data(physeq)$CODE)=c("NM","WXC","FQ","WXG","FM","WAG","LQ","WNC")
-levels(sample_data(physeq)$MoonPhase)
 
-head(sample_data(physeq))
 
 #####################
 #General Result info
 ####################
 
-AllData<-read.csv("C:\\Users\\Joe Receveur\\Documents\\MSU data\\Sturgeon\\DataAll\\AllDriftDataInvertZerosRemoved.csv",header=T)
+AllData<-read.csv("DataClean\\AllDriftDataCombined2011-2018.csv",header=T)
+AllData<-subset(AllData,Ninverts!=0) #Remove sample dates where no inverts were collected
 head(AllData)
 AllData$Year
 SamplesByYear <- ddply(AllData, c("Year"), summarise,
-                 N    = length(ï..SampleID),
+                 N    = length(SampleID),
                  Sturgeon = sum(Nsturgeon),
                  Inverts5 = sum(Ninverts),
                  Inverts100 = sum(Ninverts100),
-                 Catostomidae = sum(Nsuckers.100..)
+                 Catostomidae = sum(Nsuckers100)
 )
 SamplesByYear
 mean(SamplesByYear$N) #Average number of days per year
@@ -71,14 +69,14 @@ sum(SamplesByYear$N) #Total number of sampling days
 sum(AllData$Ninverts) #Number of invertebrates IDed
 sum(AllData$Ninverts100) #100% numbers for inverts
 sum(AllData$Nsturgeon) #Total number of sturgeon larvae collected
-sum(AllData$Nsuckers.100..)#number of catostomidae larvae
+sum(AllData$Nsuckers100)#number of catostomidae larvae
 
 SturgeonByYearByNight<- ggplot(SamplesByYear, aes(x=Year,y=Sturgeon/N))+geom_bar(stat="identity")+ylab("Sturgeon Per Night Sampled")
 InvertsByYearByNight<-ggplot(SamplesByYear, aes(x=Year,y=Inverts100/N))+geom_bar(stat="identity")+ylab("Invertebrates Per Night Sampled")
-
-
+SturgeonByYearByNight
+InvertsByYearByNight
 dev.off()
-tiff("Figures/TotalsByYearPerNight.tiff", width = 6.85, height = 3.3, units = 'in', res = 300)
+tiff("Figures/TotalsByYearPerNight.tiff", width = 6.85, height = 3.5, units = 'in', res = 300)
 ggarrange(SturgeonByYearByNight,InvertsByYearByNight,
           labels = c("a", "b"),
           ncol = 2, nrow = 1)
@@ -116,7 +114,7 @@ SuckersByDPFS
 
 #Sturgeon abu by day and year
 Trtdata <- ddply(AllData, c("DPFS","Year"), summarise,
-                 N    = length(Nsuckers.100..),
+                 N    = length(Nsuckers100),
                  meanSturgeon = mean(Nsturgeon)
 )
 Trtdata
@@ -148,14 +146,16 @@ theme_set(theme_bw(base_size = 12)+theme(panel.grid.major = element_blank(), pan
 #Alpha diversity
 ####################
 #Shannon Richness
-Richness=plot_richness(physeq, x="Date2", measures=c("Shannon"))#+geom_boxplot(aes(x=DPFS, y=value, color=DPFS), alpha=0.05)
+head(sample_data(physeq))
+Richness=plot_richness(physeq, x="DPFS", measures=c("Shannon"))#+geom_boxplot(aes(x=DPFS, y=value, color=DPFS), alpha=0.05)
 Richness+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+xlab("Date")
 #Richness$data
 
 write.csv(Richness$data, "SturgeonMetadataWDiversity.csv")
 ShannonRichness<-read.csv("SturgeonMetadataWDiversity.csv",header=T)
-head(ShannonRichness)
+ShannonRichness
 levels(ShannonRichness$MoonPhase)
+levels(metadata$MoonPhase)
 #Days post first spawn
 Trtdata <- ddply(ShannonRichness, c("DPFS"), summarise,
                  N    = length(value),
@@ -170,38 +170,28 @@ ggplot(Trtdata, aes(x=DPFS,y=meanShannon))+geom_bar(aes(),colour="black", stat="
 
 hist(ShannonRichness$percillum)
 hist(log(ShannonRichness$Ninverts100))
+hist((ShannonRichness$Ninverts100))
 
 
-ShannonSubset<-subset(ShannonRichness, percillum!= "NA")
 #ShannonSubset$percillum
-hist(ShannonSubset$Ninverts100)
-m1 = glmer(Ninverts100~1+(1|Year),data=ShannonSubset,family = poisson)
-m2 = glmer(Ninverts100~percillum+(1|Year),data=ShannonSubset,family = poisson)
+hist(ShannonRichness$Ninverts100)
+m1 = glmer(Ninverts100~1+(1|Year),data=ShannonRichness,family = poisson)
+m2 = glmer(Ninverts100~percillum+(1|Year),data=ShannonRichness,family = poisson)
 #m3 = glmer.nb(Ninverts100~DPFS+percillum+(1|Year),data=ShannonSubset)
 
-m1=glm(Ninverts100~percillum,data=ShannonSubset,family=poisson)
+m1=glm(Ninverts100~percillum,data=ShannonRichness,family=poisson)
 summary(m1)
 
 
 head(ShannonRichness)
 AIC(m1,m2)
 summary(m2)
-plot(Ninverts100~MoonPhase,data=ShannonSubset,col= Year)
+plot(Ninverts100~percillum,data=ShannonRichness)
+lines(predict(m2) ~ ShannonRichness$percillum)
+
 ShannonRichness$MoonPhase = factor(ShannonRichness$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
-
+levels(ShannonRichness$MoonPhase)
 ggplot(ShannonRichness, aes(x=MoonPhase,y=Ninverts100))+geom_boxplot()
-
-lines(predict(m2) ~ ShannonSubset$percillum)
-
-
-# Now do the same thing again but plotting on the arithmetic scale, back-transforming the
-# predictions, if needed.  There are two blanks to fill.
-plot(defense ~ cats, data=d)
-for(i in 1:120) {
-  newy = coef(m1)$genoID[i,1] + coef(m1)$genoID[i,2]*newcats
-  lines(exp(newy) ~ newcats, col=grey(0.5, alpha=0.75), lwd=0.5)
-}
-lines(exp(predy) ~ newcats, lwd=3, col=2)
 
 
 
@@ -211,7 +201,7 @@ lines(exp(predy) ~ newcats, lwd=3, col=2)
 
 
 #By calendar date
-Trtdata <- ddply(ShannonRichness, c("Date2"), summarise,
+Trtdata <- ddply(ShannonRichness, c("Date"), summarise,
                  N    = length(value),
                  meanShannon = mean(value),
                  sd   = sd(value),
@@ -230,7 +220,7 @@ Trtdata <- ddply(ShannonRichness, c("MoonPhase"), summarise,
                  se   = sd / sqrt(N)
 )
 Trtdata
-Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
+ggplot(Trtdata, aes(x=MoonPhase,y=meanShannon))+geom_bar(aes(fill = MoonPhase),colour="black", stat="identity")
 ggplot(Trtdata, aes(x=MoonPhase,y=meanShannon))+geom_bar(aes(fill = MoonPhase),colour="black", stat="identity")+xlab("Moon Phase")+ylab("Shannon Diversity (SEM)")+
   geom_errorbar(aes(ymin=meanShannon-se,ymax=meanShannon+se))+ theme(axis.text.x = element_text(angle = 45, hjust = 1))+scale_fill_manual(values=cbPalette)+ theme(legend.position = "none")+
   geom_text(x=6.5,y=2,label="KW, Chi2=10.5, p= 0.158")
@@ -239,7 +229,6 @@ kruskal.test(value~MoonPhase,data=ShannonRichness)
 
 hist(ShannonRichness$value)
 
-ShannonRichness$MoonPhase
 
 ggplot(ShannonRichness,aes(x=LunarDay,y=value))+geom_point()
 
@@ -358,10 +347,10 @@ Trtdata <- ddply(ShannonRichness, c("DPFS","Year"), summarise,
 )
 #Trtdata
 Subset<-subset(Trtdata,Year=="2018"|Year=="2017"|Year=="2016")
-TotalInvertAbuDPFS<-ggplot(Subset, aes(x=DPFS,y=meanSturgeon))+geom_bar(colour="black", stat="identity")+xlab("DPFS")+ylab("Invertebrate Abundance")+xlab("Days Post First Spawning")+
+TotalInvertAbuDPFS<-ggplot(Trtdata, aes(x=DPFS,y=meanSturgeon))+geom_bar(colour="black", stat="identity")+xlab("DPFS")+ylab("Invertebrate Abundance")+xlab("Days Post First Spawning")+
   geom_errorbar(aes(ymin=meanSturgeon-se,ymax=meanSturgeon+se))+ theme(axis.text.x = element_text(angle = 45, hjust = 1))+facet_grid(Year~.)#+scale_fill_manual(values=cbPalette)
 theme_set(theme_bw(base_size = 10)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
-
+TotalInvertAbuDPFS
 
 dev.off()
 tiff("Figures/TotalInvertebrateAbuByDPFS.tiff", width = 3.3, height = 3.3, units = 'in', res = 300)
@@ -377,12 +366,11 @@ Trtdata <- ddply(ShannonRichness, c("MoonPhase"), summarise,
                  se   = sd / sqrt(N)
 )
 Trtdata
-Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("NewMoon","WaxingCrescent","FirstQuarter","WaxingGibbous","FullMoon","WaningGibbous","LastQuarter","WaningCrescent"))
+Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
 
 #hist(ShannonRichness$Ninverts100)
 
 kruskal.test(Ninverts100~MoonPhase, data=ShannonRichness)
-ShannonRichness$MoonPhase = factor(ShannonRichness$MoonPhase, levels = c("NewMoon","WaxingCrescent","FirstQuarter","WaxingGibbous","FullMoon","WaningGibbous","LastQuarter","WaningCrescent"))
 
 compare_means(Ninverts100 ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
 
@@ -397,6 +385,9 @@ vector<- c("a","ab","bc","c","bc","b","ab","ab")  #manually renamed due to some 
 Trtdata
 
 theme_set(theme_bw(base_size = 8)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
+
+ggplot(Trtdata, aes(x=MoonPhase,y=meanSturgeon))+geom_bar(aes(fill=MoonPhase),stat="identity")+xlab("Moon Phase")+ylab("Drift Invertebrate Abundance (SEM)")+
+  geom_errorbar(aes(ymin=meanSturgeon-se,ymax=meanSturgeon+se))+scale_fill_manual(values=cbPalette)
 
 
 TotalInvertAbuMoonPhase<-ggplot(Trtdata, aes(x=MoonPhase,y=meanSturgeon))+geom_bar(aes(fill=MoonPhase),stat="identity")+xlab("Moon Phase")+ylab("Drift Invertebrate Abundance (SEM)")+
@@ -490,6 +481,7 @@ hist(ShannonRichness$Ninverts100)
 #Relative Abundance invertebrate taxa STILL IN PROGRESS
 ###############
 #Relative abundance moon phase
+######
 GPr  = transform_sample_counts(physeq, function(x) x / sum(x) ) #transform samples based on relative abundance
 RelTaxa1Per = filter_taxa(GPr, function(x) mean(x) > 1e-3, TRUE) #filter out any taxa lower tha 0.1%
 #RelTaxa1Per  = transform_sample_counts(RelTaxa1Per, function(x) x / sum(x) ) #transform samples based on relative abundance
@@ -569,6 +561,30 @@ dev.off()
 
 GPdist=phyloseq::distance(physeq, "jaccard")
 adonis(GPdist ~ MoonPhase*, as(sample_data(physeq), "data.frame"))
+
+######
+#Envfit
+######
+physeqSubset<- subset_samples(physeq, percillum!="NA")
+physeqSubset
+GPdist=phyloseq::distance(physeq, "jaccard")
+
+vare.mds= ordinate(physeq, "NMDS",GPdist)
+#vare.mds <- metaMDS(VeganDist, trace = FALSE)
+vare.mds
+EnvFitMeta=data.frame(metadata$percillum,metadata$Q,metadata$DPFS)
+#EnvFitMeta <- EnvFitMeta[!is.na(EnvFitMeta)]
+EnvFitMeta
+ef =envfit(vare.mds, EnvFitMeta, na.rm=TRUE, permu=999)
+#tax=envfit(vare.mds, EnvFitMeta,na.rm=TRUE)
+ef
+tax
+plot(vare.mds,display="sites")
+envplot=plot(ef, p.max = 0.05)
+
+
+GPdist=phyloseq::distance(physeq, "jaccard")
+adonis(GPdist ~ MoonPhase, as(sample_data(physeq), "data.frame"))
 
 
 ###########
@@ -672,110 +688,4 @@ exp(est)
 
 #Old code
 ##################
-
-
-
-
-
-
-
-#Rel abu plot
-VelocityMerge=merge_samples(physeq,"MoonPhase")
-sample_names(VelocityMerge)
-sample_data(VelocityMerge)$VelocityBin=sample_names(VelocityMerge)
-VelocityMerge=transform_sample_counts(VelocityMerge, function(x) 100*x/sum(x)) #merging samples #(averaging)
-VelocityMerge
-sample_data(VelocityMerge)$VelocityBin = factor(sample_data(VelocityMerge)$VelocityBin, levels = c("NewMoon","WaxingCrescent","FirstQuarter","WaxingGibbous","FullMoon","WaningGibbous","LastQuarter","WaningCrescent"))
-
-Velocityplot=plot_bar(VelocityMerge, "VelocityBin","Abundance", fill='Family')+ylab("Total Abundance")+xlab("Moon Phase")+facet_wrap(~Family)# +scale_fill_manual(values=cbPalette) 
-Velocityplot+ theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())#+ theme(legend.justification=c(0.05,0.95), legend.position=c(0.05,0.95))
-
-
-##Env fit
-vare.mds= ordinate(physeq, "NMDS",GPdist)
-#vare.mds <- metaMDS(VeganDist, trace = FALSE)
-vare.mds
-EnvFitMeta=metadata$SDD
-ef =envfit(vare.mds, EnvFitMeta, na.rm=TRUE, permu=999)
-#tax=envfit(vare.mds, EnvFitMeta,na.rm=TRUE)
-ef
-tax
-plot(vare.mds,display="sites")
-envplot=plot(ef, p.max = 0.05)
-
-
-##Random Forest
-ForestData=physeq#Change this one so you dont have to rewrite all variables
-predictors=t(otu_table(ForestData))
-dim(predictors)
-response <- as.factor(sample_data(ForestData)$MoonPhase)
-rf.data <- data.frame(response, predictors)
-MozzieForest <- randomForest(response~., data = rf.data, ntree = 1000)
-print(MozzieForest)#returns overall Random Forest results
-imp <- importance(MozzieForest)#all the steps that are imp or imp. are building a dataframe that contains info about the taxa used by the Random Forest testto classify treatment 
-imp <- data.frame(predictors = rownames(imp), imp)
-imp.sort <- arrange(imp, desc(MeanDecreaseGini))
-imp.sort$predictors <- factor(imp.sort$predictors, levels = imp.sort$predictors)
-imp.20 <- imp.sort[1:20, ]
-ggplot(imp.20, aes(x = predictors, y = MeanDecreaseGini)) +
-  geom_bar(stat = "identity", fill = "indianred") +
-  coord_flip() +
-  ggtitle("Most important Taxa for classifying  samples\n by treatment")#\n in a string tells it to start a new line
-otunames <- imp.20$predictors
-r <- rownames(tax_table(ForestData)) %in% otunames
-kable(tax_table(ForestData)[r, ])#returns a list of the most important predictors for Random Forest Classification
-
-
-levels(metadataAll$MoonPhase)= c("NewMoon","WaxingCrescent","FirstQuarter","WaxingGibbous","FullMoon","WaningGibbous","LastQuarter","WaningCrescent")
-levels(metadata$SDDQ)=c("<0.25","0.25-0.51","0.52-0.77",">0.77")
-levels(metadata$X72hrQuant)=c("<-1.09","-1.08_-0.19","-0.18-0.42",">0.42")
-my_comparisons <- list( c("<0.25", ">0.77"), c("0.25-0.51","0.52-0.77"),c("0.25-0.51","<0.25"))# 
-my_comparisons <- list( c("2015","2016"), c("2015","2017"),c("2016","2017"))# 
-my_comparisons <- list(c("<-1.09","-1.08_-0.19"),c("<-1.09","-0.18-0.42"),c("-0.18-0.42",">0.42"),C("-1.08_-0.19","-0.18-0.42"))
-Hep=metadataAll$Isonychiidae
-Moon=metadataAll$MoonPhase
-
-
-ggboxplot(metadataAll, x = "MoonPhase", y = "Heptaginiidae",
-          color = "MoonPhase", palette = "jco",xlab= "Moon Phase" ,legend = "none")+ 
-  geom_point()+  stat_compare_means(comparisons = my_comparisons)+# Add pairwise comparisons p-value
-  stat_compare_means(label.y = 130)+theme(axis.text.x = element_text(angle = 45, hjust = 1))+ylab("Total Isonychiidae Abundance")
-#ANOVA+TUKEY
-SDDQ=metadata$SDDQ
-Simpsons=metadata$Simpsons
-Hep=metadataAll$Heptaginiidae
-MoonPhase=metadata$MoonPhase
-Ninverts=metadata$Ninverts
-av=aov( Hep~ SDDQ)
-summary(av)
-posthoc <- TukeyHSD(av, 'MoonPhase', conf.level=0.95)
-posthoc
-#other anova option
-fit=aov(Hep~MoonPhase,data=metadata)
-summary(fit)
-theme_set(theme_bw())
-Tukey=TukeyHSD(fit,which='MoonPhase',ordered='TRUE')
-plot(Tukey,las=1)
-library(multcompView)
-
-hsd <- TukeyHSD(fit) 
-multcompLetters(extract_p(hsd$MoonPhase))
-boxplot(Hep~MoonPhase,data=metadata, main="", xlab="Velocity", ylab="Shannon Diversity", col=MoonPhase)
-
-##Heatmap
-plot_heatmap(physeq, "NMDS","bray", "MoonPhase","Family")
-#jaccard hclust
-jaccCLC <- hclust(distance(physeq, "jaccard"))
-plot(as.phylo(jaccCLC), show.tip.label = TRUE, tip.color = "white")
-colorScale <- rainbow(length(levels(sample_data(physeq)$Year)))
-cols <- colorScale[sample_data(physeq)$Year]
-GP.tip.labels <- as(sample_data(physeq)$Year, "character")
-tiplabels(GP.tip.labels, col = cols, frame = "none", adj = -0.05, 
-          cex = 0.7)
-
-##Family wise testing
-Fam.p.table= mt(physeq,"Treatment",test="f")
-print(head(Fam.p.table, 10))
-
 

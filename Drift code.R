@@ -1,3 +1,7 @@
+#This file contains scratch code not used in the final analysis
+
+
+
 ##Import Step
 library(vegan)
 library(MASS)
@@ -17,7 +21,7 @@ library(lubridate)
 library(ggpubr)
 #detach("package:mctoolsr", unload=TRUE)
 #DRIFT FILES
-file.choose()
+
 #read.csv2("C:\\Users\\Joe Receveur\\Documents\\MSU data\\Sturgeon\\Transect2014All_AD_12.09.2017.csv",header=TRUE)
 otufull=read.table("C:\\Users\\Joe Receveur\\Documents\\MSU data\\Sturgeon\\DriftAllOtherOtu.txt",header=TRUE)
 head(otufull)
