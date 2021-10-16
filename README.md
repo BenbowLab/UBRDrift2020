@@ -1,4 +1,4 @@
-# Code and data for: Drift Communities During Larval Fish Dispersal Over Multiple Recruitment Years 
+# Code and data for: Riverine Drift Communities During Larval Fish Dispersal Over Multiple Recruitment Years 
 Code files:
 UBRDriftFiguresRCode.r contains R code used in final analyses and creation of figures
 
