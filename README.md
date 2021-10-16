@@ -6,8 +6,7 @@ SturgeonDrift2020Autocorr contains R code used in data exploration and scratch c
 
 
 Data files:
-DataAll folder contains collection data split by year (2011-2018), hourly collection data, as well as discharge and temperature data.
+DataAll folder contains collection data split by year (2011-2018), hourly collection data, as well as discharge, temperature data and unique COI sequences.
 
-Unique COI sequences are in fasta format
 
 Contact:  receveur [at] msu.edu or scribne3 [at] msu.edu
