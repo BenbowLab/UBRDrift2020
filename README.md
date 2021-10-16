@@ -10,4 +10,4 @@ DataAll folder contains collection data split by year (2011-2018), hourly collec
 
 Unique COI sequences are in fasta format
 
-Contact:  receveur [at] msu.edu
+Contact:  receveur [at] msu.edu or scribne3 [at] msu.edu
