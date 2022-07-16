@@ -1,6 +1,6 @@
 # Code and data for: Riverine Drift Communities During Larval Fish Dispersal Over Multiple Recruitment Years 
 Code files:
-UBRDriftFiguresRCode.r contains R code used in final analyses and creation of figures
+UBRDriftCodeHydrobiologia.r contains R code used in final analyses and creation of figures
 
 SturgeonDrift2020Autocorr contains R code used in data exploration and scratch code
 
