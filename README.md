@@ -9,4 +9,4 @@ Data files:
 DataAll folder contains collection data split by year (2011-2018), hourly collection data, as well as discharge, temperature data and unique COI sequences.
 
 
-Contact:  receveur [at] msu.edu or scribne3 [at] msu.edu
+Contact:  josephreceveur [at] gmail.com or scribne3 [at] msu.edu
