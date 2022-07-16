@@ -150,6 +150,10 @@ ShannonSubset$DPFSCentered = ShannonSubset$DPFS - mean(ShannonSubset$DPFS)
 ShannonSubset$DoYCentered = ShannonSubset$DayOfYear - mean(ShannonSubset$DayOfYear)
 
 
+
+
+cor(ShannonSubset$DriftInvertConc,ShannonSubset$DriftBiomassConc)
+
 CorrPlotDataframe<-data.frame(Temperature=ShannonSubset$Temp,DayOfYear=ShannonSubset$DayOfYear,CTU=ShannonSubset$CTUSturgeon,RiverDischarge=ShannonSubset$QManual,LunarIllumination=ShannonSubset$percillum)
 CorrPlotDataframe<-subset(CorrPlotDataframe, RiverDischarge!="NA")
 col_order <- c("Temperature", "DayOfYear", "RiverDischarge","LunarIllumination",
@@ -758,11 +762,6 @@ colnames(PredictedDataFrame)<-c("DriftInvertConc","CTUSturgeon","UpperCI","Lower
 head(PredictedDataFrame)
 
 
-ggplot(PredictedDataFrame, aes(x=CTUSturgeon,y=DriftInvertConc))+geom_point()+geom_line(aes(CTUSturgeon, UpperCI),color="red")+
-  geom_line(aes(Temp,LowerCI),color="red")
-
-ggplot(ShannonSubset,aes(CTUSturgeon,DriftInvertConc))+geom_point()
-
 InvertGAMPlot<-ggplot(ShannonSubset,aes(CTUSturgeon,DriftInvertConc))+geom_point(color="darkgrey")+geom_line(data=PredictedDataFrame,size=1.5)+  
   geom_line(data = PredictedDataFrame, aes(y = LowerCI), size = .75,linetype="dashed")+geom_line(data = PredictedDataFrame,aes(y=UpperCI),size=0.75,linetype="dashed")+
   xlab("Cumulative Temperature Units")+ylab(expression(Macroinvertebrates~Per~100~m^3~Drift))+theme(axis.title.x=element_text(size = 8))#+ylim(NA, 1000)
@@ -828,7 +827,7 @@ dev.off()
 #####################
 #Combine Abundance Model Figure
 #####################
-DOYInvertModelBoot
+InvertGAMPlot
 SturgeonGAMPlot
 SuckerGAMPlot
 
@@ -848,19 +847,6 @@ dev.off()
 #Total InvertN By Moon Phase Normalized 
 ############
 
-# Model<-aov(log(DriftInvertConc)~MoonPhase,data=ShannonRichness)
-# summary(Model)
-# hist(resid(Model))
-# 
-# kruskal.test(DriftInvertConc~MoonPhase, data=ShannonRichness)
-# Tukey<-TukeyHSD(Model,"MoonPhase")
-# 
-# Tukey
-# difference<-Tukey$MoonPhase[,"p adj"]
-# Letters<-multcompLetters(difference)
-# 
-# Letters
-
 
 kruskal.test(DriftInvertConc~MoonPhase, data=ShannonRichness)
 
@@ -873,10 +859,8 @@ difference<-Means$p.adj
 names(difference)<-Hyphenated
 Letters<-multcompLetters(difference)
 Letters
-Letters$Letters
-#manually renamed due to some weirdness with plotting where new moon donsn't start with a
 
-LettersRearranged<-c("bc","abc","abc","a","ab","ab","ab","c")
+
 DriftPlotNAsRemoved<-subset(ShannonRichness, DriftInvertConc!="NA")
 DriftPlotNAsRemoved
 Trtdata <- ddply(DriftPlotNAsRemoved, c("MoonPhase"), summarise,
@@ -888,11 +872,17 @@ Trtdata <- ddply(DriftPlotNAsRemoved, c("MoonPhase"), summarise,
 )
 Trtdata
 
+#manually renamed due to plotting where new moon doesn't start with a
 Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
+Letters$Letters# b->a, a->b, c=c
+
+Letters2<-c("bc","bc","abc","a","ab","ab","ab","c")
+
+Trtdata
 
 TotalInvertAbuMoonPhase<-ggplot(Trtdata, aes(x=MoonPhase,y=meanSturgeon))+geom_bar(aes(),stat="identity")+xlab("Moon Phase")+ylab(expression(Macroinvertebrates~Per~100~m^3~Drift~(SE)))+
   geom_errorbar(aes(ymin=meanSturgeon-se,ymax=meanSturgeon+se))+ theme(axis.text.x = element_text(angle = 0, hjust = 0.5),axis.title.y = element_text(size = 10))+scale_fill_manual(values=cbPalette)+
-  geom_text(aes(x=MoonPhase, y=meanSturgeon+se+1,label=LettersRearranged))+theme(legend.position = "none")+geom_text(aes(x=5,y=25,label= "KW, Chi-sq = 39.98, P < 0.001"),size=4)+
+  geom_text(aes(x=MoonPhase, y=meanSturgeon+se+1,label=Letters2))+theme(legend.position = "none")+geom_text(aes(x=5,y=25,label= "KW, Chi-sq = 39.98, P < 0.001"),size=4)+
   scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))
 TotalInvertAbuMoonPhase
 theme_set(theme_bw(base_size = 12)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
@@ -902,10 +892,6 @@ tiff("Figures/TotalInvertebrateAbuByPhaseNormalized.tiff", width = 84, height = 
 TotalInvertAbuMoonPhase
 dev.off()
 
-
-
-
-compare_means(DriftInvertConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
 
 ###############
 #Hourly Results
@@ -919,37 +905,14 @@ Hourly$DriftInvertConc<-((Hourly$InvertSample100*100)/(60*60*Hourly$AreaSampled*
 Hourly$DriftSuckerConc<-(Hourly$Suckers100*100/(60*60*Hourly$AreaSampled*Hourly$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 Hourly$DriftSturgeonConc<-(Hourly$LiveSturgeon*100/(60*60*Hourly$AreaSampled*Hourly$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 
-head(Hourly$Suckers100)
 
 
 
-
-StatSubset<-subset(Hourly, InvertSample100 > 0&DriftInvertConc!= "NA") 
-length(StatSubset$ï..SampleID)
-length(Hourly$ï..SampleID)
+StatSubset<-subset(Hourly, DriftInvertConc!= "NA") # Remove NAs for hours where no discharge was recorded
 
 hist(log(Hourly$InvertSample100))
 plot(DriftInvertConc~Time,data= StatSubset)
 
-# 
-# 
-# Model<-aov(log(DriftInvertConc)~Time,data=StatSubset)
-# 
-# summary(Model)
-# plot(Model)
-# Tukey<-TukeyHSD(Model,"Time")
-# plot(Tukey)
-# Tukey
-# (exp(1.510104612)-1)*100 #352.7%Difference between 10 pm collection and midnight
-# (exp(1.1965172)-1)*100 #230.8574% lower CI
-# (exp(1.8236920)-1)*100 #519.4687% upper CI
-# 
-# difference<-Tukey$Time[,"p adj"]
-# Letters<-multcompLetters(difference)
-# Letters                         
-# #rearrange letters so a is at ten pm, c=a,a=b,c=c
-# LetterRearranged<-c("a","b","c","c","c")
-# hist(resid(Model))
 
 kruskal.test((DriftInvertConc)~Time,data=StatSubset)
 
@@ -963,7 +926,7 @@ difference<-Means$p.adj
 names(difference)<-Hyphenated
 LettersInvert<-multcompLetters(difference)
 LettersInvert<-LettersInvert$Letters
-
+LettersInvert
 
 Trtdata <- ddply(StatSubset, c("Time"), summarise,
                  N    = length(DriftInvertConc),
@@ -985,7 +948,7 @@ HourlyInvertAbu
 dev.off()
 
 
-#Sucker by collection
+#Sucker by collection time
 TrtdataSucker <- ddply(StatSubset, c("Time"), summarise,
                        N    = length(DriftSuckerConc),
                        meanSucker = mean(DriftSuckerConc),
@@ -1075,11 +1038,6 @@ dev.off()
 kruskal.test(SuckerConc~MoonPhase, data=ShannonRichness)
 kruskal.test(SturgeonConc~MoonPhase, data=ShannonRichness)
 
-
-
-
-kruskal.test(SturgeonConc~MoonPhase, data=ShannonRichness)
-
 compare_means(SturgeonConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
 
 Means=compare_means(SturgeonConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
@@ -1109,6 +1067,48 @@ tiff("Figures/SturgeonMoonPhase.tiff", width = 84, height = 84, units = 'mm', re
 SturgeonMoonPhase
 dev.off()
 
+####################
+#Total invert biomass By Moon Phase
+#####################
+head(ShannonRichness)
+TotalInvertBiomass<-subset(ShannonRichness, DriftBiomassConc!="NA")
+head(TotalInvertBiomass)
+Trtdata <- ddply(TotalInvertBiomass, c("MoonPhase"), summarise,
+                 N    = length(DriftBiomassConc),
+                 meanSturgeon = mean(DriftBiomassConc),
+                 sd   = sd(DriftBiomassConc),
+                 se   = sd / sqrt(N)
+)
+head(Trtdata)
+Trtdata
+Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
+
+
+kruskal.test(DriftBiomassConc~MoonPhase, data=ShannonRichness)
+ShannonRichness$MoonPhase = factor(ShannonRichness$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
+
+compare_means(DriftBiomassConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
+
+Means=compare_means(DriftBiomassConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
+
+Hyphenated<-as.character(paste0(Means$group1,"-",Means$group2))
+difference<-Means$p.adj
+names(difference)<-Hyphenated
+Letters<-multcompLetters(difference)
+Letters<-Letters$Letters
+Trtdata
+vector<-c("bc","bc","abc","a","ab","b","ab","c") #Relabeled due to new moon not being a
+DriftTotalInvertBiomass<-ggplot(Trtdata, aes(x=MoonPhase,y=meanSturgeon))+geom_bar(aes(),stat="identity")+xlab("Moon Phase")+ylab(expression(Macroinvertebrate~Biomass~(g)~Per~100~m^3~Drift~(SE)))+#Invertebrate Biomass (g) per 100 m3 drift (SEM)
+  geom_errorbar(aes(ymin=meanSturgeon-se,ymax=meanSturgeon+se))+ theme(axis.text.x = element_text(angle = 0, hjust = 0.5),axis.title.y = element_text(size = 8))+scale_fill_manual(values=cbPalette)+theme(legend.position = "none")+
+  geom_text(aes(x=MoonPhase, y=meanSturgeon+se+.08,label=vector))+geom_text(aes(x=5,y=1.5,label= "KW, chi-squared = 49.3, P < 0.001"),size=3)+
+  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))
+DriftTotalInvertBiomass
+theme_set(theme_bw(base_size = 12)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
+
+dev.off()
+tiff("Figures/BiomassByPhase100m3.tiff", width = 3.3, height = 3.3, units = 'in', res = 800)
+DriftTotalInvertBiomass
+dev.off()
 
 
 
@@ -1119,6 +1119,7 @@ dev.off()
 TotalInvertAbuMoonPhase
 HourlyInvertAbu
 HourlySuckerAbu
+HourlySturgeonAbu
 theme_set(theme_bw(base_size = 10)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
 
 
@@ -1177,56 +1178,6 @@ AICctab(BiomassAbuLog0,BiomassAbuLog1,BiomassAbuLog2,BiomassAbuLog3,BiomassAbuLo
 summary(BiomassAbuLog14)
 
 
-####################
-#Total invert biomass By Moon Phase
-#####################
-head(ShannonRichness)
-TotalInvertBiomass<-subset(ShannonRichness, DriftBiomassConc!="NA")
-head(TotalInvertBiomass)
-Trtdata <- ddply(TotalInvertBiomass, c("MoonPhase"), summarise,
-                 N    = length(DriftBiomassConc),
-                 meanSturgeon = mean(DriftBiomassConc),
-                 sd   = sd(DriftBiomassConc),
-                 se   = sd / sqrt(N)
-)
-head(Trtdata)
-Trtdata
-Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
-
-
-kruskal.test(DriftBiomassConc~MoonPhase, data=ShannonRichness)
-ShannonRichness$MoonPhase = factor(ShannonRichness$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
-
-compare_means(DriftBiomassConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
-
-Means=compare_means(DriftBiomassConc ~ MoonPhase, data = ShannonRichness, p.adjust.method = "fdr",method="wilcox.test")
-
-Hyphenated<-as.character(paste0(Means$group1,"-",Means$group2))
-difference<-Means$p.adj
-names(difference)<-Hyphenated
-Letters<-multcompLetters(difference)
-Letters<-Letters$Letters
-Trtdata
-vector<-c("bc","bc","abc","a","ab","b","ab","c") #Relabeled due to new moon not being a
-DriftTotalInvertBiomass<-ggplot(Trtdata, aes(x=MoonPhase,y=meanSturgeon))+geom_bar(aes(),stat="identity")+xlab("Moon Phase")+ylab(expression(Macroinvertebrate~Biomass~(g)~Per~100~m^3~Drift~(SE)))+#Invertebrate Biomass (g) per 100 m3 drift (SEM)
-  geom_errorbar(aes(ymin=meanSturgeon-se,ymax=meanSturgeon+se))+ theme(axis.text.x = element_text(angle = 0, hjust = 0.5),axis.title.y = element_text(size = 8))+scale_fill_manual(values=cbPalette)+theme(legend.position = "none")+
-  geom_text(aes(x=MoonPhase, y=meanSturgeon+se+.08,label=vector))+geom_text(aes(x=5,y=1.5,label= "KW, chi-squared = 49.3, P < 0.001"),size=3)+
-  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))
-DriftTotalInvertBiomass
-theme_set(theme_bw(base_size = 12)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
-
-dev.off()
-tiff("Figures/BiomassByPhase100m3.tiff", width = 3.3, height = 3.3, units = 'in', res = 800)
-DriftTotalInvertBiomass
-dev.off()
-
-
-
-
-
-
-
-
 
 ############
 #Total Abundance Family by Moon phase
@@ -1253,29 +1204,38 @@ sample_data(physeq)$MoonPhase = factor(sample_data(physeq)$MoonPhase, levels = c
 
 DriftDataCombined<-read.csv("DataClean/AllDriftDataCombined2011-2018FamilyRichness.csv",header=T)
 head(DriftDataCombined)
+colnames(DriftDataCombined)
+
+
+DriftDataCombined<-subset(DriftDataCombined,DriftDataCombined$DischargeSampledByNight < 2) #Remove discharge sampled outliers 
+
 #Note: CTUSturgeon in this file still using base 0!!!
 
 
-#Isonychiidae
-kruskal.test(Isonychiidae~MoonPhase,data=DriftDataCombined)
-Means<-compare_means(Isonychiidae ~ MoonPhase, data = DriftDataCombined, p.adjust.method = "fdr")
-Means
+
+physeqSubset<-subset_taxa(physeq,Family=="Crayfish"|Family=="Ephemerillidae"|Family=="Heptageniidae"|Family=="Hydropsychidae"|Family=="Isonychiidae"|Family=="Leptoceridae")
+physeqSubset
+
+#df <- psmelt(physeqSubset)
+df<-psmelt(physeq)
+df$Abundance<-df$Abundance*20 #To get total number based on 5% subsample ID
+head(df)
+df$AbuPer100<-((df$Abundance*100)/(60*4*60*df$AreaSampled.m2.*df$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
+df<-subset(df,AbuPer100!="NA")
+df<-subset(df,DischargeSampledByNight<2) # Remove discharge sampled outliers
+
+head(df)
+levels(df$Family)
+FamiliesPer100m3<-compare_means(AbuPer100 ~ MoonPhase, data = df, group.by = "Family", p.adjust.method = "fdr",method="kruskal.test")
 
 
-Hyphenated<-as.character(paste0(Means$group1,"-",Means$group2))
-difference<-Means$p.adj
-names(difference)<-Hyphenated
-LettersIso<-multcompLetters(difference)
-LettersIso
-#Rearrange letters so New moon letter = a instead of d
-#d=a, c=b,a=c, b=d
+subset(FamiliesPer100m3,p.adj < 0.1)
+subset(FamiliesPer100m3,Family=="Crayfish"|Family=="Ephemerillidae"|Family=="Heptageniidae"|Family=="Hydropsychidae"|Family=="Isonychiidae"|Family=="Leptoceridae")
 
 
-#Heptageniidae
-kruskal.test(Heptageniidae~MoonPhase,data=DriftDataCombined)
-Means<-compare_means(Heptageniidae ~ MoonPhase, data = DriftDataCombined, p.adjust.method = "fdr")
-Means
-
+HepAbuPer100<- subset(df,Family=="Heptageniidae")
+IsoAbuPer100<- subset(df,Family=="Isonychiidae")
+Means<-compare_means(AbuPer100 ~ MoonPhase, data = HepAbuPer100, group.by = "Family", p.adjust.method = "fdr",method="wilcox.test")
 
 Hyphenated<-as.character(paste0(Means$group1,"-",Means$group2))
 difference<-Means$p.adj
@@ -1283,58 +1243,14 @@ names(difference)<-Hyphenated
 LettersHep<-multcompLetters(difference)
 LettersHep
 
-
-#Crayfish
-kruskal.test(Crayfish~MoonPhase,data=DriftDataCombined)
-Means<-compare_means(Crayfish ~ MoonPhase, data = DriftDataCombined, p.adjust.method = "fdr")
-Means
-
+Means<-compare_means(AbuPer100 ~ MoonPhase, data = IsoAbuPer100, group.by = "Family", p.adjust.method = "fdr",method="wilcox.test")
 
 Hyphenated<-as.character(paste0(Means$group1,"-",Means$group2))
 difference<-Means$p.adj
 names(difference)<-Hyphenated
-LettersCray<-multcompLetters(difference)
-LettersCray
-
-#Hydropsychiidae
-kruskal.test(Hydropsychiidae~MoonPhase,data=DriftDataCombined)
-Means<-compare_means(Hydropsychiidae ~ MoonPhase, data = DriftDataCombined, p.adjust.method = "fdr")
-Means
-
-
-Hyphenated<-as.character(paste0(Means$group1,"-",Means$group2))
-difference<-Means$p.adj
-names(difference)<-Hyphenated
-LettersHyd<-multcompLetters(difference)
-LettersHyd
-
-#Graph
-
-
-
-LettersCray
-LettersHep
+LettersIso<-multcompLetters(difference)
 LettersIso
-#Rearrange iso letters so New moon letter = a instead of d
-#d=a, c=b,a=c, b=d
-TrtdataSorted<-Trtdata[order(Trtdata$Family),]
-head(TrtdataSorted)
 
-
-
-physeqSubset<-subset_taxa(physeq,Family=="Crayfish"|Family=="Ephemerillidae"|Family=="Heptageniidae"|Family=="Hydropsychidae"|Family=="Isonychiidae"|Family=="Leptoceridae")
-physeqSubset
-df <- psmelt(physeqSubset)
-
-df$Abundance<-df$Abundance*20 #To get total number based on 5% subsample ID
-head(df)
-df$AbuPer100<-((df$Abundance*100)/(60*4*60*df$AreaSampled.m2.*df$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
-df<-subset(df,AbuPer100!="NA")
-
-head(df)
-levels(df$Family)
-FamiliesPer100m3<-compare_means(AbuPer100 ~ MoonPhase, data = df, group.by = "Family", p.adjust.method = "fdr",method="kruskal.test")
-FamiliesPer100m3
 
 Trtdata <- ddply(df, c("MoonPhase","Family"), summarise,
                  N    = length(AbuPer100),
@@ -1344,30 +1260,30 @@ Trtdata <- ddply(df, c("MoonPhase","Family"), summarise,
 )
 
 Trtdata
+Trtdata<-subset(Trtdata,Family=="Crayfish"|Family=="Ephemerillidae"|Family=="Heptageniidae"|Family=="Hydropsychidae"|Family=="Isonychiidae"|Family=="Leptoceridae")
 
 Trtdata$MoonPhase = factor(Trtdata$MoonPhase, levels = c("New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"))
 
-LettersCray
+
 LettersHep
 LettersIso
-#Rearrange iso letters so New moon letter = a instead of d
-#d=a, c=b,a=c, b=d
+
 TrtdataSorted<-Trtdata[order(Trtdata$Family),]
 head(TrtdataSorted)
 vector<-c("","","","","","","","",
           "","","","","","","","",
-          "a","a","ab","b","ab","a","a","a",
+          "ab"," abc","cd","d","acd ","b","abc","abc",
           "","","","","","","","",
-          "a","ab","cd","d","bcd ","bc","abc   ","abc ",
+          "a"," ab","cd","c","bcd ","bd","abd","ab",
           "","","","","","","","")
 
 
 length(vector)
 length(TrtdataSorted$N)
-KruskalLabel<- c("Kruskal-Wallis,\n P-adj = 0.053","KW, P-adj = 0.89", "KW, P-adj < 0.001","KW, P-adj = 0.01","     P-adj < 0.001","KW, P-adj = 0.17")
+KruskalLabel<- c("Kruskal-Wallis,\n P-adj = 0.31","KW, P-adj = 0.92", "KW, P-adj < 0.001","KW, P-adj = 0.054","     P-adj < 0.001","KW, P-adj = 0.51")
 
 dat_text <- data.frame(
-  label = c("Kruskal-Wallis,\n P-adj = 0.053","KW, P-adj = 0.89", "  KW, P-adj < 0.001"," KW, P-adj = 0.01","     P-adj < 0.001","KW, P-adj = 0.17"),
+  label = c("Kruskal-Wallis,\n P-adj = 0.31","KW, P-adj = 0.92", "  KW, P-adj < 0.001","  KW, P-adj = 0.054","     P-adj < 0.001","KW, P-adj = 0.51"),
   Family   = c("Crayfish","Ephemerillidae","Heptageniidae","Hydropsychidae","Isonychiidae","Leptoceridae")
 )
 #TrtdataSorted
@@ -1375,7 +1291,7 @@ dat_text <- data.frame(
 TopFamilyAbuPer100=ggplot(TrtdataSorted, aes(x=MoonPhase,y=mean))+geom_bar(aes(),colour="black", stat="identity")+xlab("Moon Phase")+
   ylab(expression(Macroinvertebrates~Per~100~m^3~Drift~(SE))) + theme(axis.text.x = element_text(angle = 45, hjust = 1))+geom_errorbar(aes(ymin=mean-se,ymax=mean+se))+
   facet_wrap(Family~.)+scale_fill_manual(values=cbPalette)+theme(legend.position = "none")+
-  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))+geom_text(aes(x=MoonPhase,y= mean+se+1.5),label=vector,size=2)
+  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))+geom_text(aes(x=MoonPhase,y= mean+se+1),label=vector,size=2)
 TopFamilyAbuPer100
 TopFamilyAbuPer100<-TopFamilyAbuPer100+ geom_text(data=dat_text,size=2.5,mapping = aes(x = 4, y = 15, label = label))
 TopFamilyAbuPer100
@@ -1400,7 +1316,6 @@ taxmatrixfull=as.matrix(read.table("DataClean/SturgeonDriftInvertTaxNames8.15.19
 otubiomass<-otufull
 
 row.names(otubiomass)<-taxmatrixfull
-#Top famlies Rel Abu above 3% <-c("Chironomidae","Crayfish","Ephemerillidae","Heptageniidae","Hydropsychidae","Isonychiidae","Leptoceridae")
 
 otubiomasst<-t(otubiomass)
 otubiomasst<-as.data.frame(otubiomasst)
@@ -1488,6 +1403,13 @@ dev.off()
 ###########
 #See section above for data/table formatting
 
+df <- psmelt(physeqBiomass)
+df$Abundance<-df$Abundance*20# To account for 5% subsample used for ID
+df$BiomassPer100<-((df$Abundance*100)/(60*4*60*df$AreaSampled.m2.*df$AverageNetFlowByNight)) #Calculate biomass/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
+df$PercentageTotalBiomass<-df$BiomassPer100/df$DriftBiomassConc*100 #Percentage of total biomass for each family
+
+dfSubset<-subset(df,BiomassPer100!="NA")
+dfSubset<-subset(dfSubset,DischargeSampledByNight< 2)
 #
 Trtdata <- ddply(dfSubset, c("Family"), summarise,
                  N    = length(BiomassPer100),
@@ -1503,12 +1425,11 @@ TrtdataSorted<-Trtdata[order(-Trtdata$meanPercent),]
 TrtdataSorted
 
 Top6BiomassFam<-(TrtdataSorted)[1:6,]
-sum(Top6BiomassFam$meanPercent) #81% of total biomass comes from top six families
+sum(Top6BiomassFam$meanPercent) #85% of total biomass comes from top six families
 Top6BiomassFam
 BiomassPer100m3<-compare_means(BiomassPer100 ~ MoonPhase, data = df, group.by = "Family", p.adjust.method = "fdr",method="kruskal.test")
 #BiomassPer100m3
 subset(BiomassPer100m3,Family %in% Top6BiomassFam$Family)
-subset(BiomassPer100m3, p.adj < 0.05) #Isonychiidae, Heptageniidae, Hydropsychidae
 
 
 Trtdata <- ddply(dfSubset, c("Family","MoonPhase"), summarise,
@@ -1520,8 +1441,15 @@ TrtdataSubset<-subset(Trtdata,Family %in% Top6BiomassFam$Family)
 TrtdataSubset
 
 
+Hep<-subset(dfSubset,Family=="Heptageniidae")
+Iso<-subset(dfSubset,Family=="Isonychiidae")
+
+
+
+
 #Heptageniidae
-kruskal.test(Heptageniidae~MoonPhase,data=DriftDataCombined)# Use adj-p values
+
+kruskal.test(BiomassPer100~MoonPhase,data=Hep)
 Means<-compare_means(Heptageniidae ~ MoonPhase, data = DriftDataCombined, p.adjust.method = "fdr")
 Means
 
@@ -1530,9 +1458,9 @@ difference<-Means$p.adj
 names(difference)<-Hyphenated
 LettersHep<-multcompLetters(difference)
 LettersHep
-
-#Isonychiidae
-kruskal.test(Isonychiidae~MoonPhase,data=DriftDataCombined) #Use adj-p values
+# 
+# #Isonychiidae
+kruskal.test(BiomassPer100~MoonPhase,data=Iso)
 Means<-compare_means(Isonychiidae ~ MoonPhase, data = DriftDataCombined, p.adjust.method = "fdr")
 Means
 
@@ -1542,41 +1470,16 @@ names(difference)<-Hyphenated
 LettersIso<-multcompLetters(difference)
 LettersIso
 
-TrtdataSubset<-TrtdataSubset[order(Trtdata$Family),]
-TrtdataSubset<-subset(TrtdataSubset,Family!="NA")
-
-
 LettersHep
 LettersIso
-# vector<-c("","","","","","","","",
-#           "","","","","","","","",
-#           "","","","","","","","",
-#           "a","a","ab","b","ab","a","a","a",
-#           "a","ab","cd","d","bcd","bc","abc","abc",
-#           "","","","","","","","")
-# 
-vector<-c("a","a","ab","b","ab","a","a","a","a","ab","cd","d","bcd","bc","abc","abc")
-dat_text <- data.frame(
-  label = c("KW, Chi-sq = 50.19,\n adj-P < 0.001",  "KW, Chi-sq = 49.56,\n      adj-P < 0.001"),
-  Family   = c("Heptageniidae","Isonychiidae")
-)
-
-TrtdataSubsetHI<-subset(TrtdataSubset, Family=="Heptageniidae"|Family=="Isonychiidae")
-TrtdataSubsetHI
-HepIsoBiomass=ggplot(TrtdataSubsetHI, aes(x=MoonPhase,y=mean))+geom_bar(aes(),colour="black", stat="identity")+xlab("Moon Phase")+
-  ylab(expression(Biomass~(g)~Per~100~m^3~Drift~(SE))) + theme(axis.text.x = element_text(angle = 45, hjust = 1))+geom_errorbar(aes(ymin=mean-se,ymax=mean+se))+
-  facet_wrap(Family~.)+theme(legend.position = "none")+
-  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))+ geom_text(data=dat_text,size=3,mapping = aes(x = 5, y = 0.9, label = label))+scale_fill_manual(values=cbPalette)+
-  geom_text(aes(x=MoonPhase,y= mean+se+.05),label=vector,size=2.5)
-HepIsoBiomass
-
-
 vector<-c("","","","","","","","",
           "","","","","","","","",
           "","","","","","","","",
-          "a","a","ab","b","ab","a","a","a",
-          "a","ab","cd","d","bcd","bc","abc    ","abc ",
+          "abc"," abc"," bcd","d","cd","a","abc","ab",
+          "a"," abc","de","e","cde ","bcd ","abcd","ab",
           "","","","","","","","")
+
+# Isonychiidae d=a,a=b,b=c,c=d,e=e
 
 
 dat_text <- data.frame(
@@ -1586,7 +1489,7 @@ dat_text <- data.frame(
 TopFamilyBiomass=ggplot(TrtdataSubset, aes(x=MoonPhase,y=mean))+geom_bar(aes(),colour="black", stat="identity")+xlab("Moon Phase")+
   ylab(expression(Biomass~(g)~Per~100~m^3~Drift~(SE))) + theme(axis.text.x = element_text(angle = 45, hjust = 1))+geom_errorbar(aes(ymin=mean-se,ymax=mean+se))+
   facet_wrap(Family~.)+theme(legend.position = "none")+
-  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))+ geom_text(data=dat_text,size=2.4,mapping = aes(x = 4, y = 0.9, label = label))+scale_fill_manual(values=cbPalette)+
+  scale_x_discrete(labels=c("New","WXC","FQ","WXG","Full","WAG","LQ","WNC"))+ geom_text(data=dat_text,size=2.4,mapping = aes(x = 4, y = 0.92, label = label))+scale_fill_manual(values=cbPalette)+
   geom_text(aes(x=MoonPhase,y= mean+se+.07),label=vector,size=2)
 TopFamilyBiomass
 
@@ -1632,7 +1535,7 @@ CrayfishAbu$Abundance<-CrayfishAbu$Abundance*20 #Account for 5% sampling
 CrayfishAbu$CrayfishPer100<-((CrayfishAbu$Abundance*100)/(60*4*60*CrayfishAbu$AreaSampled.m2.*CrayfishAbu$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 CrayfishAbu$SturgeonPer100<-((CrayfishAbu$Nsturgeon*100)/(60*4*60*CrayfishAbu$AreaSampled.m2.*CrayfishAbu$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 CrayfishAbu$SuckerPer100<-((CrayfishAbu$Nsuckers100*100)/(60*4*60*CrayfishAbu$AreaSampled.m2.*CrayfishAbu$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
-
+kruskal.test(CrayfishPer100~MoonPhase, data=CrayfishAbu)
 
 
 head(CrayfishAbu)
@@ -1742,13 +1645,13 @@ head(FamilyGAMData)
 
 IsonychiidaeAbu<-subset(FamilyGAMData,Family=="Isonychiidae")
 
-
 head(IsonychiidaeAbu)
 IsonychiidaeAbu$Abundance<-IsonychiidaeAbu$Abundance*20 #Account for 5% sampling
 IsonychiidaeAbu$IsonychiidaePer100<-((IsonychiidaeAbu$Abundance*100)/(60*4*60*IsonychiidaeAbu$AreaSampled.m2.*IsonychiidaeAbu$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 IsonychiidaeAbu$SturgeonPer100<-((IsonychiidaeAbu$Nsturgeon*100)/(60*4*60*IsonychiidaeAbu$AreaSampled.m2.*IsonychiidaeAbu$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 IsonychiidaeAbu$SuckerPer100<-((IsonychiidaeAbu$Nsuckers100*100)/(60*4*60*IsonychiidaeAbu$AreaSampled.m2.*IsonychiidaeAbu$AverageNetFlowByNight)) #Calculate inverts/ 100 m3 water (N*100(final vol )/time in sec*flow*area sampled)
 
+kruskal.test(IsonychiidaePer100~MoonPhase, data=IsonychiidaeAbu)
 
 
 head(IsonychiidaeAbu)
